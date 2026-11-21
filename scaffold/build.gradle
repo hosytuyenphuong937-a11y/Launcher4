@@ -197,6 +197,8 @@ dependencies {
     implementation 'androidx.fragment:fragment:1.8.9'
     implementation 'androidx.cardview:cardview:1.0.0'
     implementation 'androidx.slice:slice-view:1.1.0-alpha02'
+    implementation libs.androidx.slice.core
+    compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
     implementation "androidx.lifecycle:lifecycle-runtime-ktx:${libs.versions.androidx.lifecycle.get()}"
     implementation 'androidx.lifecycle:lifecycle-extensions:2.2.0'
 
