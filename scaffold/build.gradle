@@ -131,7 +131,6 @@ android {
         versionCode 1
         versionName '1.0'
         minSdk = 31
-        manifestPlaceholders = [packageName: 'app.launcher4']
     }
 
     flavorDimensions = ['app']
