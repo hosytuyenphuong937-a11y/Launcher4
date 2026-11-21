@@ -142,7 +142,8 @@ android {
 
     sourceSets {
         main {
-            res.srcDirs = ['res']
+            // animationlib's interpolators are referenced through the app's R class.
+            res.srcDirs = ['res', 'platform_frameworks_libs_systemui/animationlib/res']
             java.srcDirs = launcherSourceDirs
             kotlin.directories.addAll(launcherSourceDirs)
             manifest.srcFile 'AndroidManifest-common.xml'
