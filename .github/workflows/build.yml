@@ -1,0 +1,93 @@
+name: Build Launcher4
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Official Android 16 Launcher3 source.
+  AOSP_TAG: android-16.0.0_r3
+  # Pinned Lawnchair commit: only used for its Gradle wrapper, version catalog, prebuilt Android 16
+  # jars, flag classes and small System UI modules. None of Lawnchair's launcher code is used.
+  LAWNCHAIR_SHA: 311d035d1b46670d4e1c00287aa021d13b362d84
+  # Google's frameworks/libs/systemui with Gradle files, as pinned by that Lawnchair commit.
+  SYSUI_SHA: 233c33f3934cb364d997f42d989785d51d09530a
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Fetch Android 16 Launcher3 source
+        run: |
+          git clone --depth 1 --branch "$AOSP_TAG" https://android.googlesource.com/platform/packages/apps/Launcher3 _src/aosp \
+            || git clone --depth 1 --branch "$AOSP_TAG" https://github.com/goooler/launcher3 _src/aosp
+
+      - uses: actions/checkout@v7
+        with:
+          repository: LawnchairLauncher/lawnchair
+          ref: ${{ env.LAWNCHAIR_SHA }}
+          path: _src/lawnchair
+          persist-credentials: false
+
+      - uses: actions/checkout@v7
+        with:
+          repository: LawnchairLauncher/platform_frameworks_libs_systemui
+          ref: ${{ env.SYSUI_SHA }}
+          path: _src/sysui
+          persist-credentials: false
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: 'zulu'
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Assemble project
+        run: |
+          AOSP_SRC="$PWD/_src/aosp" \
+          LC_SRC="$PWD/_src/lawnchair" \
+          SYSUI_SRC="$PWD/_src/sysui" \
+          OUT="$PWD/build-tree" \
+          bash scripts/assemble.sh
+
+      - name: Build APK
+        working-directory: build-tree
+        run: ./gradlew --stacktrace assembleAospDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: Launcher4-apk
+          path: build-tree/build/outputs/apk/aosp/debug/*.apk
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: Launcher4-apk
+          path: out
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mv out/*.apk out/Launcher4.apk
+          gh release create "build-${{ github.run_number }}" out/Launcher4.apk \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Launcher4 build ${{ github.run_number }}" \
+            --notes "Debug-signed build of Launcher4 (AOSP Launcher3, Android 16). Download Launcher4.apk and install it. If you installed an earlier build, uninstall it first: each build is signed with a fresh debug key."

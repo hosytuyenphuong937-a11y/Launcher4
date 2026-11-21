@@ -1,0 +1,205 @@
+import com.android.build.gradle.api.AndroidBasePlugin
+import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
+// Standalone Gradle build for plain AOSP Launcher3 (Android 16, "non-Quickstep" variant).
+// The module layout mirrors the "Launcher3" target in Launcher3's own Android.bp.
+
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.android.library) apply false
+    alias(libs.plugins.kotlin.compose) apply false
+    alias(libs.plugins.google.ksp)
+    alias(libs.plugins.google.protobuf)
+}
+
+allprojects {
+    plugins.withType(AndroidBasePlugin).configureEach {
+        android {
+            buildToolsVersion "37.0.0"
+            compileSdk {
+                version = release(37) {
+                    minorApiLevel = 2
+                }
+            }
+            defaultConfig {
+                minSdk = 26
+                targetSdk = 37
+                vectorDrawables.useSupportLibrary = true
+            }
+            lint {
+                abortOnError false
+                checkReleaseBuilds false
+            }
+            compileOptions {
+                sourceCompatibility = libs.versions.jdkRelease.get()
+                targetCompatibility = libs.versions.jdkRelease.get()
+            }
+        }
+        dependencies {
+            implementation libs.androidx.core.ktx
+            implementation libs.androidx.core.animation
+        }
+    }
+
+    plugins.withId('com.google.protobuf') {
+        protobuf {
+            protoc {
+                artifact = libs.protobuf.protoc.get().toString()
+            }
+            generateProtoTasks {
+                all().configureEach { task ->
+                    task.builtins {
+                        java {
+                            option "lite"
+                        }
+                    }
+                }
+            }
+        }
+        dependencies {
+            implementation libs.protobuf.javalite
+        }
+    }
+
+    plugins.withType(JavaBasePlugin).configureEach {
+        java {
+            sourceCompatibility = libs.versions.jdkRelease.get()
+            targetCompatibility = libs.versions.jdkRelease.get()
+        }
+    }
+
+    tasks.withType(KotlinCompile).configureEach {
+        compilerOptions {
+            jvmDefault = JvmDefaultMode.ENABLE
+            jvmTarget = JvmTarget.fromTarget(libs.versions.jdkRelease.get())
+        }
+    }
+
+    ext {
+        FRAMEWORK_PREBUILTS_DIR = "$rootDir/prebuilts/libs"
+
+        addFrameworkJar = { String name ->
+            def frameworkJar = new File(FRAMEWORK_PREBUILTS_DIR, name)
+            if (!frameworkJar.exists()) {
+                throw new IllegalArgumentException("Framework jar path ${frameworkJar.path} doesn't exist")
+            }
+            gradle.projectsEvaluated {
+                tasks.withType(JavaCompile).configureEach {
+                    // Make sure the frameworkJar is always first in the classpath.
+                    classpath = files(frameworkJar, classpath)
+                }
+                tasks.withType(KotlinCompile).configureEach {
+                    // Make sure the frameworkJar is always first in the classpath.
+                    libraries.setFrom files(frameworkJar, libraries)
+                }
+            }
+            dependencies {
+                compileOnly files(frameworkJar)
+            }
+        }
+
+        compileOnlyCommonJars = {
+            dependencies {
+                compileOnly fileTree(dir: FRAMEWORK_PREBUILTS_DIR, include: 'SystemUI-core-16.jar')
+                compileOnly fileTree(dir: FRAMEWORK_PREBUILTS_DIR, include: 'SystemUI-statsd-16.jar')
+                compileOnly fileTree(dir: FRAMEWORK_PREBUILTS_DIR, include: 'WindowManager-Shell-16.jar')
+            }
+        }
+    }
+}
+
+def launcherSourceDirs = [
+        'src',
+        'src_plugins',
+        'src_no_quickstep',
+        'src_build_config',
+        'dagger/src',
+        'concurrent/src',
+        'compose/facade/core',
+        'compose/facade/disabled',
+        'shared/src',
+        'extra_src',
+]
+
+android {
+    namespace 'com.android.launcher3'
+
+    defaultConfig {
+        applicationId 'app.launcher4'
+        versionCode 1
+        versionName '1.0'
+        minSdk = 31
+        manifestPlaceholders = [packageName: 'app.launcher4']
+    }
+
+    flavorDimensions = ['app']
+    productFlavors {
+        aosp {
+            dimension 'app'
+        }
+    }
+
+    sourceSets {
+        main {
+            res.srcDirs = ['res']
+            java.srcDirs = launcherSourceDirs
+            kotlin.directories.addAll(launcherSourceDirs)
+            manifest.srcFile 'AndroidManifest-common.xml'
+            proto {
+                srcDirs = ['protos/', 'protos_overrides/']
+            }
+        }
+        aosp {
+            manifest.srcFile 'AndroidManifest.xml'
+        }
+    }
+
+    buildTypes {
+        debug {
+            // Keep the debug build usable as a daily launcher.
+            debuggable false
+        }
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.debug
+        }
+    }
+}
+
+addFrameworkJar('framework-16.jar')
+
+dependencies {
+    implementation projects.iconloaderlib
+    implementation projects.animationlib
+    implementation projects.msdllib
+    implementation projects.contextualeducationlib
+    implementation projects.viewcapturelib
+    implementation projects.flags
+    implementation projects.plugincore
+    implementation projects.log
+
+    implementation fileTree(dir: FRAMEWORK_PREBUILTS_DIR, include: 'SystemUI-statsd-16.jar')
+    implementation fileTree(dir: FRAMEWORK_PREBUILTS_DIR, include: 'WindowManager-Shell-16.jar')
+    compileOnly fileTree(dir: FRAMEWORK_PREBUILTS_DIR, include: 'SystemUI-core-16.jar')
+
+    implementation libs.androidx.constraintlayout
+    implementation libs.androidx.recyclerview
+    implementation libs.androidx.dynamicanimation
+    implementation libs.androidx.window
+    implementation libs.androidx.graphics.shapes
+    implementation libs.androidx.preference.ktx
+    implementation libs.google.material
+    implementation libs.google.guava
+    implementation libs.kotlinx.coroutines.android
+    implementation libs.dagger
+    implementation libs.javax.inject
+    implementation 'androidx.fragment:fragment:1.8.9'
+    implementation 'androidx.cardview:cardview:1.0.0'
+    implementation 'androidx.slice:slice-view:1.1.0-alpha02'
+    implementation "androidx.lifecycle:lifecycle-runtime-ktx:${libs.versions.androidx.lifecycle.get()}"
+    implementation 'androidx.lifecycle:lifecycle-extensions:2.2.0'
+
+    ksp libs.dagger.compiler
+}

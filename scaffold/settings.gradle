@@ -1,0 +1,63 @@
+pluginManagement {
+    repositories {
+        google {
+            content {
+                includeGroupByRegex("com\\.android.*")
+                includeGroupByRegex("com\\.google.*")
+                includeGroupByRegex("androidx.*")
+            }
+        }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+rootProject.name = "launcher4"
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google {
+            content {
+                includeGroupByRegex("com\\.android.*")
+                includeGroupByRegex("com\\.google.*")
+                includeGroupByRegex("androidx.*")
+            }
+        }
+        mavenCentral()
+    }
+}
+
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
+
+// System UI libraries (Google's frameworks/libs/systemui, Gradle-ready copy).
+include ':iconloaderlib'
+project(':iconloaderlib').projectDir = new File(rootDir, 'platform_frameworks_libs_systemui/iconloaderlib')
+
+include ':animationlib'
+project(':animationlib').projectDir = new File(rootDir, 'platform_frameworks_libs_systemui/animationlib')
+
+include ':msdllib'
+project(':msdllib').projectDir = new File(rootDir, 'platform_frameworks_libs_systemui/msdllib')
+
+include ':contextualeducationlib'
+project(':contextualeducationlib').projectDir = new File(rootDir, 'platform_frameworks_libs_systemui/contextualeducationlib')
+
+include ':viewcapturelib'
+project(':viewcapturelib').projectDir = new File(rootDir, 'platform_frameworks_libs_systemui/viewcapturelib')
+
+// System UI plugin core and its small dependencies.
+include ':plugincore'
+project(':plugincore').projectDir = new File(rootDir, 'systemUI/plugin_core')
+
+include ':common'
+project(':common').projectDir = new File(rootDir, 'systemUI/common')
+
+include ':log'
+project(':log').projectDir = new File(rootDir, 'systemUI/log')
+
+include ':utils'
+project(':utils').projectDir = new File(rootDir, 'systemUI/utils')
+
+// Hand-converted aconfig flag classes (com.android.launcher3.Flags and friends).
+include ':flags'
