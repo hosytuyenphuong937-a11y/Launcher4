@@ -125,3 +125,51 @@ replace_once("res/values/config.xml",
 replace_once("res/values/config.xml",
              '<dimen name="hotseat_bar_bottom_space_default">48</dimen>',
              '<dimen name="hotseat_bar_bottom_space_default">12</dimen>')
+
+
+# ---------------------------------------------------------------------------------------------
+# Feature flags: do not depend on Android's own flag classes
+# ---------------------------------------------------------------------------------------------
+# Real devices do not necessarily ship com.android.window.flags.Flags & co. for apps (build 4 crashed
+# on a Samsung tablet with NoClassDefFoundError). Use the bundled copy (flags module) or constants.
+
+WINDOW_FLAGS = "com.android.window.flags.Flags"
+WINDOW_FLAGS_BUNDLED = "com.android.window.flags2.Flags"
+for source in ("src/com/android/launcher3/Launcher.java",
+               "src/com/android/launcher3/CheckLongPressHelper.java",
+               "src/com/android/launcher3/widget/BaseWidgetSheet.java",
+               "src/com/android/launcher3/allapps/ActivityAllAppsContainerView.java"):
+    path = root / source
+    original = path.read_text(encoding="utf-8")
+    if WINDOW_FLAGS not in original:
+        sys.exit(f"patch_tree: {source} no longer references {WINDOW_FLAGS}")
+    path.write_text(original.replace(WINDOW_FLAGS, WINDOW_FLAGS_BUNDLED), encoding="utf-8")
+
+PRIVATE_SPACE_IMPORT = "import static android.multiuser.Flags.enableMovingContentIntoPrivateSpace;"
+for source in ("src/com/android/launcher3/allapps/AlphabeticalAppsList.java",
+               "src/com/android/launcher3/popup/PopupContainerWithArrow.java",
+               "src/com/android/launcher3/touch/ItemClickHandler.java"):
+    replace_once(source, PRIVATE_SPACE_IMPORT,
+                 "import static app.launcher4.flags.PlatformFlags.enableMovingContentIntoPrivateSpace;")
+
+replace_once("src/com/android/launcher3/widget/WidgetManagerHelper.java",
+             "android.appwidget.flags.Flags.generatedPreviews()",
+             "app.launcher4.flags.PlatformFlags.generatedPreviews()")
+
+# Safety net: fail the build if any app source still reads one of Android's own flag classes.
+import re as _re
+PLATFORM_FLAGS = _re.compile(
+    r"\b(com\.android\.window\.flags|android\.multiuser|android\.appwidget\.flags|android\.os|"
+    r"android\.app|android\.view\.inputmethod|android\.service\.dreams|android\.view\.accessibility|"
+    r"android\.content\.pm|android\.content\.res|android\.provider)\.Flags\b")
+offenders = []
+for directory in ("src", "src_no_quickstep", "src_plugins", "shared", "dagger", "concurrent", "extra_src",
+                  "platform_frameworks_libs_systemui", "systemUI"):
+    for path in (root / directory).rglob("*"):
+        if path.suffix in (".java", ".kt") and "/tests/" not in str(path) and "androidTest" not in str(path):
+            code = [line for line in path.read_text(encoding="utf-8", errors="replace").splitlines()
+                    if not line.lstrip().startswith(("//", "*", "/*"))]
+            if PLATFORM_FLAGS.search("\n".join(code)):
+                offenders.append(str(path.relative_to(root)))
+if offenders:
+    sys.exit("patch_tree: sources still use Android's own flag classes:\n  " + "\n  ".join(offenders))

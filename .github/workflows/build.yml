@@ -87,7 +87,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mv out/*.apk out/Launcher4.apk
+          cat > out/notes.md <<'NOTES'
+          Debug-signed build of Launcher4 (AOSP Launcher3, Android 16) with Google search bars.
+
+          **Install:** download Launcher4.apk, open it, allow installs from your browser if asked, then tap **Open** and choose "Choose default home app".
+          If you installed an earlier build, uninstall it first: each build is signed with a fresh debug key.
+
+          **Search bars:** the home screen bar (below the dock) and the app drawer bar show the Google app's own search widget, so the Google app must be installed. The first time, tap the small gear on the bar and allow Launcher4 to add the widget.
+
+          **If it closes unexpectedly:** open the "Launcher4" app from your app list. It shows the error with Copy / Share buttons.
+          NOTES
           gh release create "build-${{ github.run_number }}" out/Launcher4.apk \
             --repo "$GITHUB_REPOSITORY" \
             --title "Launcher4 build ${{ github.run_number }}" \
-            --notes "Debug-signed build of Launcher4 (AOSP Launcher3, Android 16). Download Launcher4.apk and install it. If you installed an earlier build, uninstall it first: each build is signed with a fresh debug key."
+            --notes-file out/notes.md
