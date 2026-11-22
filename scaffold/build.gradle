@@ -203,5 +203,8 @@ dependencies {
     implementation "androidx.lifecycle:lifecycle-runtime-ktx:${libs.versions.androidx.lifecycle.get()}"
     implementation 'androidx.lifecycle:lifecycle-extensions:2.2.0'
 
+    // Lifts Android's hidden-API restrictions for this process (see app.launcher4.HiddenApi).
+    implementation 'org.lsposed.hiddenapibypass:hiddenapibypass:6.1'
+
     ksp libs.dagger.compiler
 }

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     Launcher4: the app drawer search bar. It hosts the search widget of the installed Google app
+     (which draws the Google G, microphone and Lens icons itself) instead of the stock app filter.
+-->
+<app.launcher4.AllAppsQsbContainer
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@id/search_container_all_apps"
+    android:layout_width="match_parent"
+    android:layout_height="@dimen/all_apps_search_bar_field_height"
+    android:layout_centerHorizontal="true"
+    android:layout_gravity="top|center_horizontal"
+    android:padding="0dp">
+
+    <fragment
+        android:name="app.launcher4.AllAppsQsbFragment"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:tag="qsb_view_all_apps" />
+</app.launcher4.AllAppsQsbContainer>

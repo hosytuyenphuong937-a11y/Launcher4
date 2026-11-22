@@ -41,6 +41,9 @@ done
 # Small stand-in sources (see scaffold/extra_src).
 cp -a "$HERE/scaffold/extra_src" "$OUT/extra_src"
 
+# Launcher4 resource overrides (search bar layouts).
+cp -a "$HERE/scaffold/overrides/." "$OUT/"
+
 # Our Gradle files.
 cp "$HERE/scaffold/settings.gradle" "$HERE/scaffold/build.gradle" "$HERE/scaffold/gradle.properties" "$OUT/"
 
